@@ -2,16 +2,8 @@ import './hello.html';
 import {Markers} from '../../../api/marker.js';
 import { Meteor } from 'meteor/meteor';
 
-Meteor.startup(function() {
-    $(window).resize(function() {
-        $('#map').css('height', window.innerHeight - 82 - 45);
-    });
-    $(window).resize(); // trigger resize event 
-});
 // create marker collection
-
 Meteor.subscribe('markers');
-
 Template.map.rendered = function() {
   var busIcon = L.icon({
       iconUrl: '/img/bus.png',
@@ -20,14 +12,23 @@ Template.map.rendered = function() {
   });
 
   L.Icon.Default.imagePath = 'packages/bevanhunt_leaflet/images/';
+  function onLocationFound(e) {
+      var radius = e.accuracy / 2;
+
+      L.marker(e.latlng).addTo(map)
+          .bindPopup("You are within " + radius + " meters from this point").openPopup();
+
+      L.circle(e.latlng, radius).addTo(map);
+  }
 
   var map = L.map('map', {
     doubleClickZoom: false
-  }).setView([49.25044, -123.137], 13);
-
+  }).fitWorld();
   L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
+      attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
   }).addTo(map);
+  map.locate({setView: true, maxZoom: 13});
+  map.on('locationfound', onLocationFound);
   map.on('click', function(event) {
       //Markers.insert({latlng: event.latlng});
       Meteor.call('insertStartMarker', event.latlng);
