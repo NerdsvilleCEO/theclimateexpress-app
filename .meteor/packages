@@ -26,8 +26,8 @@ practicalmeteor:mocha             # A package for writing and running your meteo
 johanbrook:publication-collector  # Test a Meteor publication by collecting its output
 twbs:bootstrap
 bevanhunt:leaflet
-accounts-ui
-accounts-password
 useraccounts:bootstrap
+accounts-password
 alanning:roles
 mrt:accounts-admin-ui-bootstrap-3
+useraccounts:flow-routing

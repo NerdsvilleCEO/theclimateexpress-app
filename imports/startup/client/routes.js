@@ -11,7 +11,7 @@ FlowRouter.route('/', {
   name: 'App.home',
   action() {
     BlazeLayout.render('App_body', { main: 'App_home' });
-  },
+  }
 });
 
 FlowRouter.notFound = {
