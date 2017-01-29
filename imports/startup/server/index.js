@@ -21,6 +21,7 @@ Meteor.methods({
         Markers.update(id, {$set: {"type": 'bus'}});
     },
     insertFinishMarker: function(latlng) {
+        console.log(latlng);
         if(Markers.find({latlng: latlng}).fetch().length == 0){
             Markers.insert({latlng: latlng, type: 'finish'});
         }

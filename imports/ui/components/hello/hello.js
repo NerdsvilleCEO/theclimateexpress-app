@@ -49,6 +49,30 @@ Template.map.rendered = function() {
           Meteor.call('insertStartMarker', event.latlng);
       }
     }
+
+    function staffCloseInsertEvent(newEvent, closeEvent){
+        if(closeEvent.latlng != newEvent.latlng) {
+            var redraw_query = Markers.find();
+            var redraw_res_map = redraw_query.collection._docs._map;
+            for(res in redraw_res_map) {
+                if(redraw_res_map[res].type != "finish"){
+                    var payload = getMarkerPayload(redraw_res_map[res]);
+                    var redraw_marker = L.marker(redraw_res_map[res].latlng, payload);
+                    redraw_marker.addTo(map);
+                }
+            }
+        }
+    }
+
+    function staffInsertFinish(e, newEvent) {
+        if(newEvent.latlng != e.latlng){
+            console.log(newEvent.latlng);
+            Meteor.call('insertFinishMarker', newEvent.latlng);
+            map.off('click', staffInsertFinish);
+            map.on('click', staffCloseInsertEvent.bind(null, newEvent));
+        }
+    }
+
   var map = L.map('map', {
     doubleClickZoom: false
   }).fitWorld();
@@ -58,9 +82,7 @@ Template.map.rendered = function() {
   map.locate({setView: true, maxZoom: 13});
   map.on('locationfound', onLocationFound);
 
-  map.on('click', function(event){
-      staffClick(event);
-  });
+  map.on('click', staffClick);
 
   var query = Markers.find();
   query.observe({
@@ -83,25 +105,8 @@ Template.map.rendered = function() {
           //Switch to a flag for end point, if staff
           //Switch to a view for showing the purchased miles, if user and not started
           if(Meteor.user().profile.role == "staff"){
-              map.on('click', function(newEvent) {
-                  newEvent.originalEvent.preventDefault();
-                    if(newEvent.latlng != e.latlng){
-                        Meteor.call('insertFinishMarker', newEvent.latlng);
-                        map.on('click', function(closeEvent){
-                            if(closeEvent.latlng != newEvent.latlng) {
-                                var redraw_query = Markers.find();
-                                var redraw_res_map = redraw_query.collection._docs._map;
-                                for(res in redraw_res_map) {
-                                    if(redraw_res_map[res].type != "finish"){
-                                        var payload = getMarkerPayload(redraw_res_map[res]);
-                                        var redraw_marker = L.marker(redraw_res_map[res].latlng, payload);
-                                        redraw_marker.addTo(map);
-                                    }
-                                }
-                            }
-                        });
-                    }
-                });
+              map.off('click', staffClick);
+              map.on('click', staffInsertFinish.bind(null, e));
           }
 
           if(Meteor.user().profile.role == "user") {
