@@ -20,11 +20,18 @@ Meteor.methods({
     changeMarkerToBus: function(id) {
         Markers.update(id, {$set: {"type": 'bus'}});
     },
-    insertFinishMarker: function(latlng) {
-        console.log(latlng);
-        if(Markers.find({latlng: latlng}).fetch().length == 0){
-            Markers.insert({latlng: latlng, type: 'finish'});
+    insertFinishMarker: function(latlng, start) {
+        if(Markers.find({start: start}).fetch().length == 0){
+            Markers.insert({latlng: latlng, start: start, type: 'finish'});
         }
+        results = Markers.find({start: start, type: "finish"}).fetch();
+        if(results.length != 0){
+            return results;
+        }
+        return false;
+    },
+    getFinishMarksForStart: function(latlng) {
+        return Markers.find({start: latlng}).fetch();
     },
     changeMarkerToStart: function(id) {
         Markers.update(id, {$set: {"type": 'start'}});

@@ -66,9 +66,18 @@ Template.map.rendered = function() {
 
     function staffInsertFinish(e, newEvent) {
         if(newEvent.latlng != e.latlng){
-            console.log(newEvent.latlng);
-            Meteor.call('insertFinishMarker', newEvent.latlng);
+            Meteor.call('insertFinishMarker', newEvent.latlng, e.latlng, function(err, result){
+                if(result){
+                    Meteor.call('getFinishMarksForStart', result[0].start, function(err, results){
+                        console.log(results[0]);
+                        var payload = getMarkerPayload(results[0]);
+                        var marker = L.marker(results[0].latlng, payload);
+                        marker.addTo(map);
+                    });
+                }
+            });
             map.off('click', staffInsertFinish);
+
             map.on('click', staffCloseInsertEvent.bind(null, newEvent));
         }
     }
@@ -97,46 +106,58 @@ Template.map.rendered = function() {
         var marker = L.marker(document.latlng, payload).addTo(map);
     },
     added: function (document) {
-        var payload = getMarkerPayload(document);
-        var marker = L.marker(document.latlng, payload);
-        marker.addTo(map)
-        .on('click', function(e) {
-          //This is specific logic for user and driver since we only care when they click on a marker :)
-          //Switch to a flag for end point, if staff
-          //Switch to a view for showing the purchased miles, if user and not started
-          if(Meteor.user().profile.role == "staff"){
-              map.off('click', staffClick);
-              map.on('click', staffInsertFinish.bind(null, e));
-          }
+        if(document.type != "finish"){
+            var payload = getMarkerPayload(document);
+            var marker = L.marker(document.latlng, payload);
+            marker.addTo(map)
+            .on('click', function(e) {
+            //This is specific logic for user and driver since we only care when they click on a marker :)
+            //Switch to a flag for end point, if staff
+            //Switch to a view for showing the purchased miles, if user and not started
+            if(Meteor.user().profile.role == "staff"){
+                map.off('click', staffClick);
+                map.eachLayer(function (layer) {
+                    if(layer._latlng && (layer._latlng.lat != e.latlng.lat || layer._latlng.lng != e.latlng.lng)) {
+                        map.removeLayer(layer);
+                    }
+                });
+                Meteor.call('getFinishMarksForStart', e.latlng, function(err, results){
+                        var payload = getMarkerPayload(results[0]);
+                        var marker = L.marker(results[0].latlng, payload);
+                        marker.addTo(map);
+                });
+                map.on('click', staffInsertFinish.bind(null, e));
+            }
 
-          if(Meteor.user().profile.role == "user") {
-              map.eachLayer(function (layer) {
-                  if(layer._latlng && (layer._latlng.lat != marker._latlng.lat || layer._latlng.lng != marker._latlng.lng)) {
-                      map.removeLayer(layer);
-                  }
-              });
-              marker.on('click', function(event){
-                  var redraw_query = markers.find();
-                  var redraw_res_map = redraw_query.collection._docs._map;
-                  for(res in redraw_res_map) {
-                      var payload = getmarkerpayload(redraw_res_map[res]);
-                      var redraw_marker = l.marker(redraw_res_map[res].latlng, payload);
-                      redraw_marker.addto(map);
-                  }
-              });
-          }
-          //Switch to a view showing the bus location on path if started
-          //If bus driver, updated marker type to bus, this will be updated along the way
+            if(Meteor.user().profile.role == "user") {
+                map.eachLayer(function (layer) {
+                    if(layer._latlng && (layer._latlng.lat != marker._latlng.lat || layer._latlng.lng != marker._latlng.lng)) {
+                        map.removeLayer(layer);
+                    }
+                });
+                marker.on('click', function(event){
+                    var redraw_query = markers.find();
+                    var redraw_res_map = redraw_query.collection._docs._map;
+                    for(res in redraw_res_map) {
+                        var payload = getmarkerpayload(redraw_res_map[res]);
+                        var redraw_marker = l.marker(redraw_res_map[res].latlng, payload);
+                        redraw_marker.addto(map);
+                    }
+                });
+            }
+            //Switch to a view showing the bus location on path if started
+            //If bus driver, updated marker type to bus, this will be updated along the way
 
-          if(Meteor.user().profile.role == "driver"){
-              Meteor.call('changeMarkerToBus', document._id);
-              marker.on('click', function(event){
-                  //If they click again, remove it
-                  map.removeLayer(marker);
-                  Meteor.call('changeMarkerToStart', document._id);
-              });
-          }
-        });
+            if(Meteor.user().profile.role == "driver"){
+                Meteor.call('changeMarkerToBus', document._id);
+                marker.on('click', function(event){
+                    //If they click again, remove it
+                    map.removeLayer(marker);
+                    Meteor.call('changeMarkerToStart', document._id);
+                });
+            }
+            });
+        }
     },
     removed: function (oldDocument) {
       layers = map._layers;
