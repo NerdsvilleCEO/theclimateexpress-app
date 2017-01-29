@@ -10,15 +10,20 @@ travel_streams = {};
 
 Meteor.methods({
     insertStartMarker: function(latlng) {
-        if(Markers.find({latlng: latlng}) != {}) {
+        if(Markers.find({latlng: latlng}).fetch().length == 0) {
             Markers.insert({latlng: latlng, userId:this.userId, type: 'start'});
+            return false;
+        } else {
+            return true;
         }
     },
     changeMarkerToBus: function(id) {
         Markers.update(id, {$set: {"type": 'bus'}});
     },
-    insertFinishMarker: function(latlng, start) {
-        Markers.insert({latlng: latlng, start: start.latlng, type: 'finish'});
+    insertFinishMarker: function(latlng) {
+        if(Markers.find({latlng: latlng}).fetch().length == 0){
+            Markers.insert({latlng: latlng, type: 'finish'});
+        }
     },
     changeMarkerToStart: function(id) {
         Markers.update(id, {$set: {"type": 'start'}});

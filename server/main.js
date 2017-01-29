@@ -2,4 +2,4 @@
 
 import '/imports/startup/server';
 import '/imports/startup/both';
-import {Markers} from '/imports/api/marker.js';
+import '/imports/api/marker.js';
