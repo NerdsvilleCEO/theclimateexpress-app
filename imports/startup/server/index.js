@@ -10,10 +10,18 @@ travel_streams = {};
 
 Meteor.methods({
     insertStartMarker: function(latlng) {
-        Markers.insert({latlng: latlng, userId:this.userId});
+        if(Markers.find({latlng: latlng}) != {}) {
+            Markers.insert({latlng: latlng, userId:this.userId, type: 'start'});
+        }
     },
-    changeMarkerToBus: function(id, latlng) {
+    changeMarkerToBus: function(id) {
         Markers.update(id, {$set: {"type": 'bus'}});
+    },
+    insertFinishMarker: function(latlng, start) {
+        Markers.insert({latlng: latlng, start: start.latlng, type: 'finish'});
+    },
+    changeMarkerToStart: function(id) {
+        Markers.update(id, {$set: {"type": 'start'}});
     }
 });
 

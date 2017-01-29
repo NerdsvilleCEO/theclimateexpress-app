@@ -13,12 +13,54 @@ AccountsTemplates.configure({
     confirmPassword: false,
     overrideLoginErrors: true,
     lowercaseUsername: true,
-
     negativeFeedback: false,
     positiveFeedback: false,
     negativeValidation: true,
     positiveValidation: true
 });
+
+AccountsTemplates.addFields([
+    {
+        _id: 'phone',
+        type: 'tel',
+        displayName: "Phone Number"
+    },
+    {
+        _id: 'first',
+        type: 'text',
+        displayName: "First Name",
+        required: true
+    },
+    {
+        _id: 'last',
+        type: 'text',
+        displayName: "Last Name",
+        required: true
+    },
+    {
+        _id: "role",
+        type: "radio",
+        displayName: "Role",
+        select: [
+            {
+                text: "User",
+                value: "user"
+            },
+            {
+                text: "Admin",
+                value: "admin"
+            },
+            {
+                text: "Bus Driver",
+                value: "driver"
+            },
+            {
+                text: "Staff",
+                value: "staff"
+            }
+        ],
+    }
+]);
 
 AccountsTemplates.configureRoute('signIn', {
     name: 'signin',

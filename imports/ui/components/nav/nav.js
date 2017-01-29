@@ -14,7 +14,11 @@ if(Meteor.isClient) {
             return Meteor.user().emails[0].address;
         },
         name: function(){
-            return Meteor.user().profile.name;
+            var profile = Meteor.user().profile;
+            return profile.first + " " + profile.last;
+        },
+        role: function(){
+            return Meteor.user().profile.role;
         }
     });
 }

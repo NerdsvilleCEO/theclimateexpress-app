@@ -6,9 +6,13 @@ import { Meteor } from 'meteor/meteor';
 Meteor.subscribe('markers');
 Template.map.rendered = function() {
   var busIcon = L.icon({
-      iconUrl: '/img/bus.png',
+      iconUrl: '/img/bus-graphic.png',
+      iconSize:     [60, 40] // size of the icon
+  });
 
-      iconSize:     [20, 20], // size of the icon
+  var finalIcon = L.icon({
+      iconUrl: '/img/destination-point.png',
+      iconSize: [60, 40]
   });
 
   L.Icon.Default.imagePath = 'packages/bevanhunt_leaflet/images/';
@@ -30,43 +34,97 @@ Template.map.rendered = function() {
   map.locate({setView: true, maxZoom: 13});
   map.on('locationfound', onLocationFound);
   map.on('click', function(event) {
-      //Markers.insert({latlng: event.latlng});
-      Meteor.call('insertStartMarker', event.latlng);
+      //If we are a staff member, we are going to
+      // be able to click on a marker and insert a finish marker for that part
+      //In addition to this, we are going to be able
+      //  to click out of that by clicking anywhere outside of the finish marker
+      //Finally, we should be able to remove the
+      //  marker from the map, as well as database
+      //Regardless of which method of exiting,
+      //  we want to reflow with the base markers
+      //  (except finish markers)
+      if(Meteor.user().profile.role == 'staff'){
+          var exists = Meteor.call('insertStartMarker', event.latlng);
+          if(exists){
+              map.on('click', function(newEvent) {
+                  if(newEvent.latlng != event.latlng){
+                      Meteor.call('insertFinishMarker', newEvent.latlng, event);
+                      map.on('click', function(closeEvent){
+                          if(closeEvent.latlng != newEvent.latlng) {
+                              var redraw_query = markers.find();
+                              var redraw_res_map = redraw_query.collection._docs._map;
+                              for(res in redraw_res_map) {
+                                  if(redraw_res_map[res].type != "finish"){
+                                      var payload = getmarkerpayload(redraw_res_map[res]);
+                                      var redraw_marker = l.marker(redraw_res_map[res].latlng, payload);
+                                      redraw_marker.addto(map);
+                                  }
+                              }
+                          }
+                      });
+                  }
+              });
+          }
+      }
   });
+
+  function getMarkerPayload(document){
+      var payload = {};
+      if(document.type && document.type == "bus") {
+          payload = {icon: busIcon};
+      } else if (document.type && document.type == "finish") {
+          payload = {icon: finishIcon};
+      }
+      return payload;
+  }
 
   var query = Markers.find();
   query.observe({
     changed: function(document, old){
-        var payload = {};
         var old_marker = new L.marker(old.latlng);
         map.eachLayer(function (layer) {
             if(layer._latlng && layer._latlng.lat == old.latlng.lat && layer._latlng.lng == old.latlng.lng) {
                 map.removeLayer(layer);
             }
         });
-        if(document.type && document.type == "bus") {
-            payload = {icon: busIcon};
-        }
+        var payload = getMarkerPayload(document);
         var marker = L.marker(document.latlng, payload).addTo(map);
     },
     added: function (document) {
-        var payload = {};
-        if(document.type && document.type == "bus") {
-            payload = {icon: busIcon};
-        }
-        var marker = L.marker(document.latlng, payload).addTo(map)
+        var payload = getMarkerPayload(document);
+        var marker = L.marker(document.latlng, payload);
+        marker.addTo(map)
         .on('click', function(event) {
+          //This is specific logic for user and driver since we only care when they click on a marker :)
           //Switch to a flag for end point, if staff
           type = "flag";
           //Switch to a view for showing the purchased miles, if user and not started
+          if(Meteor.user().profile.role == "user") {
+              map.eachLayer(function (layer) {
+                  if(layer._latlng && (layer._latlng.lat != marker._latlng.lat || layer._latlng.lng != marker._latlng.lng)) {
+                      map.removeLayer(layer);
+                  }
+              });
+              marker.on('click', function(event){
+                  var redraw_query = markers.find();
+                  var redraw_res_map = redraw_query.collection._docs._map;
+                  for(res in redraw_res_map) {
+                      var payload = getmarkerpayload(redraw_res_map[res]);
+                      var redraw_marker = l.marker(redraw_res_map[res].latlng, payload);
+                      redraw_marker.addto(map);
+                  }
+              });
+          }
           //Switch to a view showing the bus location on path if started
           //If bus driver, updated marker type to bus, this will be updated along the way
-          Meteor.call('changeMarkerToBus', document._id);
-          marker.on('click', function(event){
-              //If they click again, remove it
-              map.removeLayer(marker);
-              Markers.remove({_id: document._id});
-          });
+          if(Meteor.user().profile.role == "driver"){
+              Meteor.call('changeMarkerToBus', document._id);
+              marker.on('click', function(event){
+                  //If they click again, remove it
+                  map.removeLayer(marker);
+                  Meteor.call('changeMarkerToStart', document._id);
+              });
+          }
         });
     },
     removed: function (oldDocument) {
